@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تنس ثلاثي الأبعاد</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1a24;--fg:#f4f7f2;--ball:#d7ff3f}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:'Cairo',system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;gap:28px;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 0;font-weight:800;font-size:22px;pointer-events:none;text-shadow:0 2px 6px #0008}
+#hud b{color:var(--ball);font-size:34px;margin-inline-start:6px}
+#mu{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;background:#0006;border:0;border-radius:10px;font-size:22px;padding:6px 10px;color:#fff}
+#pw{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);width:min(80vw,420px);height:16px;border-radius:8px;background:linear-gradient(90deg,#60a5fa,#facc15 55%,#ef4444);display:none;box-shadow:0 2px 8px #0008}
+#ar{position:absolute;top:-28px;left:0;transform:translateX(-50%);font-size:26px;color:#ffe14d;line-height:1;text-shadow:0 1px 4px #000}
+#pw small{position:absolute;top:22px;width:100%;text-align:center;font-weight:600;font-size:14px;text-shadow:0 1px 4px #000}
+.stick{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);width:116px;height:116px;border-radius:50%;background:#ffffff1f;border:2px solid #ffffff55;touch-action:none}
+.stick::before{content:attr(data-l);position:absolute;top:-26px;left:50%;transform:translateX(-50%);white-space:nowrap;text-align:center;font-size:14px;font-weight:800;text-shadow:0 1px 4px #000}
+.knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;border-radius:50%;background:#ffffffb0;box-shadow:0 2px 8px #0006;pointer-events:none}
+#jl{left:calc(env(safe-area-inset-left,0px) + 24px)}#jr{right:calc(env(safe-area-inset-right,0px) + 24px)}
+#sv{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:76px;height:76px;border-radius:50%;border:0;background:var(--ball);color:#10200a;font:800 18px 'Cairo',sans-serif;display:none;box-shadow:0 3px 12px #0008}
+#menu{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:flex-start;padding:0 4vw;background:linear-gradient(270deg,#0a121bdd 0,#0a121b00 65%)}
+.card{width:min(300px,88vw);max-height:92vh;overflow:auto;padding:16px 18px;border-radius:18px;background:#0e1a24d9;border:1px solid #ffffff2a;backdrop-filter:blur(6px)}
+.tt{font-weight:800;font-size:30px;color:var(--ball);margin-bottom:4px}
+.gl{font-weight:700;font-size:14px;opacity:.8;margin:12px 0 6px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{flex:1;min-width:56px;padding:10px 6px;border-radius:10px;border:2px solid #ffffff44;background:#ffffff14;color:var(--fg);font:700 15px 'Cairo',sans-serif}
+.chips button.on{background:var(--ball);color:#10200a;border-color:var(--ball)}
+#go{margin-top:18px;width:100%;padding:12px;border:0;border-radius:12px;background:var(--ball);color:#10200a;font:800 19px 'Cairo',sans-serif}
+#mn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:12px;z-index:5;background:#0006;border:0;border-radius:10px;font:700 14px 'Cairo',sans-serif;padding:8px 12px;color:#fff}
+#msg{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 215px);text-align:center;font-weight:800;font-size:26px;white-space:pre-line;line-height:1.6;padding:0 20px;pointer-events:none;text-shadow:0 2px 8px #000a}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><span>أنت<b id="sp">0</b></span><span>الخصم<b id="sa">0</b></span></div>
+<button id="mu">🔊</button>
+<div id="pw"><div id="ar">▼</div><small>اضغط مطوّلًا لتشحن الضربة، وكلما طال الضغط صارت أسرع</small></div>
+<div class="stick" id="jl" data-l="تحرّك"><div class="knob"></div></div>
+<div class="stick" id="jr" data-l="صوّب واضغط مطوّلًا للشحن"><div class="knob"></div></div>
+<button id="sv">ابدأ</button>
+<button id="mn">القائمة</button>
+<div id="menu"><div class="card"><div class="tt">تنس 3D</div>
+<div class="gl">مستوى الخصم</div><div class="chips" id="lv"><button data-v="0">سهل</button><button data-v="1" class="on">متوسط</button><button data-v="2">صعب</button><button data-v="3">مستحيل</button></div>
+<div class="gl">أرضية الملعب</div><div class="chips" id="sf"><button data-v="g">عشبية</button><button data-v="c">رملية</button><button data-v="h" class="on">زرقاء</button></div>
+<div class="gl">الأجواء</div><div class="chips" id="en"><button data-v="in" class="on">صالة مغلقة</button><button data-v="out">ملعب مفتوح</button></div>
+<button id="go">ابدأ المباراة</button></div></div>
+<div id="msg"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+addEventListener('error',e=>{const m=document.getElementById('msg');if(m){m.style.color='#ff8a8a';m.textContent='خطأ: '+(e.message||'')}});
+const T=THREE,W=7.7,L=18.7,G=14,R=.14,PZ=17.7,NET=1.0,SL=L*.58;
+const ren=new T.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+ren.setPixelRatio(Math.min(devicePixelRatio,1.5));ren.shadowMap.enabled=true;
+const scene=new T.Scene();scene.background=new T.Color(0x0c1118);scene.fog=new T.Fog(0x0c1118,80,190);
+const cam=new T.PerspectiveCamera(55,1,.1,220);
+function fit(){const w=innerWidth,h=innerHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.fov=w/h<1?80:58;cam.updateProjectionMatrix()}
+addEventListener('resize',fit);fit();
+
+const hemi=new T.HemisphereLight(0xdfe8ff,0x445566,1.0);scene.add(hemi);
+const sun=new T.DirectionalLight(0xffffff,.9);sun.position.set(8,24,12);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-38,right:38,top:38,bottom:-38,near:1,far:110});scene.add(sun);
+
+const mat=c=>new T.MeshLambertMaterial({color:c});
+function plane(w,l,c,x,y,z,basic){const m=new T.Mesh(new T.PlaneGeometry(w,l),basic?new T.MeshBasicMaterial({color:c}):mat(c));m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.receiveShadow=true;scene.add(m);return m}
+const groundM=plane(320,320,0x3d7a4e,0,-.02,0);
+const courtM=plane(W*2+4,L*2+4,0x2a5f9e,0,0,0);
+const apronM=plane(W*2+12,L*2+12,0x4f9a52,0,-.01,0);
+const room=new T.Mesh(new T.BoxGeometry(54,26,86),new T.MeshLambertMaterial({color:0x1a2230,side:T.BackSide}));room.position.set(0,12.9,1);scene.add(room);const ceilObjs=[room];
+for(let i=-3;i<=3;i++){const st=new T.Mesh(new T.BoxGeometry(1.4,.4,72),new T.MeshBasicMaterial({color:0xfff4d6}));st.position.set(i*7,25.6,1);scene.add(st);ceilObjs.push(st)}
+for(let j=-3;j<=3;j++){const bm=new T.Mesh(new T.BoxGeometry(52,.6,.6),new T.MeshLambertMaterial({color:0x2d3846}));bm.position.set(0,25.3,j*13);scene.add(bm);ceilObjs.push(bm)}
+plane(W*2+.08,.08,0xffffff,0,.01,L,1);plane(W*2+.08,.08,0xffffff,0,.01,-L,1);
+plane(.08,L*2,0xffffff,W,.01,0,1);plane(.08,L*2,0xffffff,-W,.01,0,1);
+plane(W*2,.08,0xffffff,0,.01,SL,1);plane(W*2,.08,0xffffff,0,.01,-SL,1);
+plane(.08,SL*2,0xffffff,0,.01,0,1);
+
+// net
+const net=new T.Mesh(new T.PlaneGeometry(W*2+.6,.9),new T.MeshLambertMaterial({color:0x10161c,transparent:true,opacity:.75,side:T.DoubleSide}));
+net.position.y=.55;net.castShadow=true;scene.add(net);
+const band=new T.Mesh(new T.BoxGeometry(W*2+.6,.08,.05),mat(0xffffff));band.position.y=NET;scene.add(band);
+[-1,1].forEach(s=>{const p=new T.Mesh(new T.CylinderGeometry(.05,.05,1.1,8),mat(0x999999));p.position.set(s*(W+.3),.55,0);p.castShadow=true;scene.add(p)});
+
+function char(col){
+  const g=new T.Group(),add=(geo,c,x,y,z)=>{const o=new T.Mesh(geo,mat(c));o.position.set(x,y,z);o.castShadow=true;g.add(o);return o};
+  add(new T.CylinderGeometry(.14,.12,.9,10),0xf4f4f4,-.14,.45,0);add(new T.CylinderGeometry(.14,.12,.9,10),0xf4f4f4,.14,.45,0);
+  add(new T.CylinderGeometry(.3,.26,.8,12),col,0,1.3,0);
+  add(new T.SphereGeometry(.2,14,12),0xe8b48f,0,1.95,0);
+  const piv=new T.Group();piv.position.set(.38,1.55,0);g.add(piv);
+  const part=(geo,c,z)=>{const o=new T.Mesh(geo,mat(c));o.position.z=z;o.castShadow=true;piv.add(o);return o};
+  part(new T.CylinderGeometry(.06,.06,.6,8),0xe8b48f,-.3).rotation.x=Math.PI/2;
+  part(new T.CylinderGeometry(.03,.03,.35,8),0x222222,-.75).rotation.x=Math.PI/2;
+  part(new T.TorusGeometry(.22,.03,8,20),0xffffff,-1.1).scale.y=1.3;
+  g.piv=piv;scene.add(g);return g;
+}
+const Rr=(a,c)=>a+Math.random()*(c-a);
+let cheer=0,ct=0;
+// ---------- players ----------
+const pm=(c,k)=>new T.MeshPhongMaterial({color:c,shininess:k||14});
+function racket(col){
+ const r=new T.Group(),q=Math.PI;
+ const add=(geo,mt,x,y,z)=>{const m=new T.Mesh(geo,mt);m.position.set(x,y,z);m.castShadow=true;r.add(m);return m};
+ add(new T.CylinderGeometry(.021,.021,.21,12),pm(0x151515,20),0,.105,0);
+ for(let i=0;i<6;i++)add(new T.CylinderGeometry(.0225,.0225,.005,12),pm(0xf2f2f2),0,.03+i*.034,0);
+ add(new T.SphereGeometry(.027,10,8),pm(0x151515),0,0,0).scale.y=.5;
+ [-1,1].forEach(k=>{add(new T.CylinderGeometry(.009,.012,.19,8),pm(col,70),k*.05,.31,0).rotation.z=-k*.32});
+ add(new T.BoxGeometry(.075,.016,.02),pm(col,70),0,.4,0);
+ const rx=.125,ry=.17,cy=.56,pts=[];
+ for(let i=0;i<40;i++){const t=i/40*q*2;pts.push(new T.Vector3(Math.cos(t)*rx,Math.sin(t)*ry,0))}
+ add(new T.TubeGeometry(new T.CatmullRomCurve3(pts,true),72,.0145,8,true),pm(col,90),0,cy,0);
+ add(new T.SphereGeometry(.022,8,6),pm(0xeeeeee),0,cy+ry,0).scale.y=.7;
+ const ln=[];
+ for(let i=-7;i<=7;i++){const x=i*rx/7.6,yy=ry*Math.sqrt(1-(x/rx)**2);ln.push(x,-yy,0,x,yy,0)}
+ for(let j=-9;j<=9;j++){const y=j*ry/9.6,xx=rx*Math.sqrt(1-(y/ry)**2);ln.push(-xx,y,0,xx,y,0)}
+ const lg=new T.BufferGeometry();lg.setAttribute('position',new T.Float32BufferAttribute(ln,3));
+ const sl=new T.LineSegments(lg,new T.LineBasicMaterial({color:0xfafafa,transparent:true,opacity:.85}));sl.position.y=cy;r.add(sl);
+ r.rotation.set(-q/2,q/2,0);r.scale.setScalar(1.2);return r;
+}
+function gripHand(par,sk){
+ const m=(geo,x,y,z,sc,rot)=>{const k=new T.Mesh(geo,pm(sk));k.position.set(x,y,z);if(sc)k.scale.set(sc[0],sc[1],sc[2]);if(rot)k.rotation.set(rot[0],rot[1],rot[2]);k.castShadow=true;par.add(k);return k};
+ m(new T.SphereGeometry(1,14,10),0,0,-.385,[.054,.04,.07]);
+ for(let i=0;i<4;i++){m(new T.TorusGeometry(.04,.0125,6,12,q2*1.45),0,0,-.35-i*.03,null,[0,0,q2*.78]);m(new T.SphereGeometry(.0135,6,5),.03,.03,-.35-i*.03)}
+ m(new T.CylinderGeometry(.015,.012,.08,8),.036,.03,-.38,null,[1.1,0,.9]);
+}
+const q2=Math.PI;
+function relaxHand(par,sk,sd){
+ const m=(geo,x,y,z,sc,rot)=>{const k=new T.Mesh(geo,pm(sk));k.position.set(x,y,z);if(sc)k.scale.set(sc[0],sc[1],sc[2]);if(rot)k.rotation.set(rot[0],rot[1],rot[2]);k.castShadow=true;par.add(k);return k};
+ m(new T.SphereGeometry(1,12,10),0,-.73,0,[.046,.062,.028]);
+ const L1=[.05,.058,.054,.044];
+ for(let i=0;i<4;i++){const f=new T.Group();f.position.set((i-1.5)*.024,-.785,0);f.rotation.x=.15+i*.03;par.add(f);
+  const a=new T.Mesh(new T.CylinderGeometry(.0115,.0105,L1[i],6),pm(sk));a.position.y=-L1[i]/2;f.add(a);
+  const f2=new T.Group();f2.position.y=-L1[i];f2.rotation.x=.55;f.add(f2);
+  const b2=new T.Mesh(new T.CylinderGeometry(.0105,.009,L1[i]*.8,6),pm(sk));b2.position.y=-L1[i]*.4;f2.add(b2);
+  const tp=new T.Mesh(new T.SphereGeometry(.0095,6,5),pm(sk));tp.position.y=-L1[i]*.8;f2.add(tp)}
+ m(new T.CylinderGeometry(.013,.011,.065,6),sd*.052,-.74,-.015,null,[.3,0,sd*.5]);
+}
+function pro(o){
+ const g=new T.Group(),dir=o.lefty?-1:1,q=Math.PI,sk=o.skin;
+ const mk=(geo,c,p,par)=>{const m=new T.Mesh(geo,pm(c));m.position.set(p[0],p[1],p[2]);m.castShadow=false;(par||g).add(m);return m};
+ const cyl=(a,b,h,c,p,par)=>{const m=mk(new T.CylinderGeometry(a,b,h,16),c,p,par);m.castShadow=a>=.08;return m};
+ const sph=(r,c,p,par,sx,sy,sz)=>{const m=mk(new T.SphereGeometry(r,16,12),c,p,par);m.scale.set(sx||1,sy||1,sz||1);m.castShadow=r>=.09;return m};
+ const leg=x=>{const l=new T.Group();l.position.set(x,.98,0);g.add(l);
+  cyl(.135,.095,.5,sk,[0,-.25,0],l);sph(.115,sk,[0,-.22,-.03],l,1,1.5,1);sph(.1,sk,[0,-.5,0],l);
+  cyl(.09,.06,.4,sk,[0,-.72,0],l);sph(.09,sk,[0,-.62,.035],l,1,1.6,1);
+  cyl(.068,.072,.14,0xffffff,[0,-.88,0],l);
+  sph(.088,o.shoe,[0,-.955,-.05],l,1,.62,1.9);mk(new T.BoxGeometry(.155,.026,.31),0x1a1a1a,[0,-.997,-.06],l);
+  mk(new T.BoxGeometry(.06,.01,.1),0xdddddd,[0,-.925,-.1],l);
+  if(o.shoeAcc){sph(.05,o.shoeAcc,[0,-.955,.07],l,1,.7,1);mk(new T.BoxGeometry(.03,.03,.14),o.shoeAcc,[x<0?-.08:.08,-.95,-.06],l)}return l};
+ g.legL=leg(-.13);g.legR=leg(.13);
+ cyl(.28,.3,.4,o.shorts,[0,.93,0]);cyl(.295,.295,.05,0xffffff,[0,1.14,0]);
+ const up=new T.Group();up.position.y=.98;g.add(up);
+ mk(new T.CylinderGeometry(.27,.29,.3,18),o.shirt,[0,.2,0],up).scale.z=.75;
+ mk(new T.CylinderGeometry(.38,.27,.5,18),o.shirt,[0,.6,0],up).scale.z=.72;
+ [-1,1].forEach(k=>{sph(.15,o.shirt,[k*.15,.68,-.1],up,1,.9,.6);sph(.16,sk,[k*.41,.79,0],up,1,1.05,.95);sph(.12,sk,[k*.16,.9,0],up,1.4,.55,.9)});
+ if(o.panel)[-1,1].forEach(k=>{mk(new T.BoxGeometry(.035,.4,.3),o.panel,[k*.325,.58,0],up).rotation.z=-k*.12});
+ cyl(.085,.1,.16,sk,[0,.98,0],up);
+ const hd=new T.Group();hd.position.set(0,1.14,0);up.add(hd);
+ sph(.2,sk,[0,0,0],hd,.93,1.1,1);sph(.115,sk,[0,-.1,-.07],hd,1.05,.85,.9);
+ [-1,1].forEach(k=>{
+  sph(.06,sk,[k*.1,-.05,-.13],hd,1,.9,.8);sph(.042,sk,[k*.188,-.01,.02],hd,.5,1,.8);
+  sph(.03,0xf4f4f0,[k*.07,.035,-.172],hd,1.25,.9,.7);sph(.0175,o.eye,[k*.07,.035,-.197],hd);sph(.0085,0x050505,[k*.07,.035,-.209],hd);
+  sph(.031,sk,[k*.07,.052,-.17],hd,1.3,.5,.8);
+  mk(new T.BoxGeometry(.075,.014,.016),o.hair,[k*.072,.088,-.178],hd).rotation.z=-k*.12;
+  sph(.01,0x3a1f18,[k*.016,-.052,-.21],hd)});
+ mk(new T.CylinderGeometry(.012,.02,.07,8),sk,[0,-.005,-.19],hd).rotation.x=-.25;
+ sph(.03,sk,[0,-.04,-.205],hd,1.1,.85,.9);
+ sph(.03,0xb2605a,[0,-.092,-.185],hd,1.9,.45,.6);sph(.03,0xa5524d,[0,-.108,-.18],hd,1.7,.5,.6);mk(new T.BoxGeometry(.06,.006,.008),0x5a2a25,[0,-.1,-.19],hd);
+ mk(new T.SphereGeometry(.212,18,12,0,q*2,0,q*.56),o.hair,[0,.035,.03],hd).rotation.x=-.25;
+ if(o.long)sph(.17,o.hair,[0,-.04,.11],hd,1,1.1,.8);
+ if(o.band)mk(new T.TorusGeometry(.19,.028,8,24),o.band,[0,.085,0],hd).rotation.x=q/2;
+ const armO=new T.Group();armO.position.set(-dir*.42,.8,0);up.add(armO);
+ cyl(.09,.07,.3,sk,[0,-.15,0],armO);sph(.09,sk,[0,-.1,-.03],armO,1,1.4,1);if(o.sleeve)cyl(.108,.094,.17,o.sleeve,[0,-.07,0],armO);sph(.07,sk,[0,-.31,0],armO);
+ cyl(.068,.05,.28,sk,[0,-.45,0],armO);cyl(.056,.056,.06,0xffffff,[0,-.6,0],armO);relaxHand(armO,sk,-dir);
+ const piv=new T.Group();piv.position.set(dir*.42,.8,0);up.add(piv);
+ cyl(.095,.072,.3,sk,[0,-.15,0],piv);sph(.095,sk,[0,-.1,-.04],piv,1,1.4,1);if(o.sleeve)cyl(.112,.098,.17,o.sleeve,[0,-.07,0],piv);
+ const el=new T.Group();el.position.set(0,-.31,0);piv.add(el);
+ sph(.074,sk,[0,0,0],el);
+ cyl(.072,.055,.3,sk,[0,0,-.15],el).rotation.x=q/2;
+ cyl(.058,.058,.06,0xffffff,[0,0,-.31],el).rotation.x=q/2;
+ gripHand(el,sk);
+ const rk=racket(o.racket);rk.position.set(0,0,-.3);el.add(rk);
+ g.scale.setScalar(.88);Object.assign(g,{top:up,piv,armO,el,dir,head:hd});scene.add(g);return g;
+}
+const me=pro({lefty:0,skin:0xdcae88,shirt:0x1b2a5c,sleeve:0x1b2a5c,panel:0xf26a1b,shorts:0xf6f6f6,hair:0x1c1612,shoe:0xf6f6f6,shoeAcc:0xf26a1b,eye:0x3b2415,racket:0x1f7ae0});
+const ai=pro({lefty:1,skin:0xc98f66,shirt:0xff7a1a,sleeve:0xff7a1a,shorts:0x1b2a4a,hair:0x1a1512,band:0xffffff,long:1,shoe:0xf4f4f4,eye:0x3b2415,racket:0x161616});
+ai.rotation.y=Math.PI;
+
+const ovT={p:0,a:0},side={p:1,a:1};
+function animate(c,k,dt){
+ const lx=c.lx===undefined?c.position.x:c.lx,lz=c.lz===undefined?c.position.z:c.lz;
+ const vx=(c.position.x-lx)/Math.max(dt,.001),vz=(c.position.z-lz)/Math.max(dt,.001);c.lx=c.position.x;c.lz=c.position.z;
+ const spx=Math.min(1,Math.abs(vx)/4),spz=Math.min(1,Math.abs(vz)/4),sp=Math.max(spx,spz);
+ c.ph=(c.ph||0)+Math.hypot(vx,vz)*dt*2.6;c.tt=(c.tt||0)+dt;
+ const s=Math.sin(c.ph),ds=k==='a'?-1:1,fwd=-vz*ds,idle=Math.sin(c.tt*1.7+(k==='a'?2:0));
+ const swing=sw[k]>0,ov=ovT[k]>0,p=swing?1-sw[k]/.3:-1,lunge=swing?Math.sin(p*Math.PI):0;
+ const win=S.st==='wait'&&S.win===k,lose=S.st==='wait'&&S.win&&S.win!==k,srv=S.st==='serve'&&S.srv===k&&!S.menu;
+ const ch=k==='p'&&!S.menu?chg:0;if(ovT[k]>0)ovT[k]-=dt;
+ const sg=s>0?1:-1;if(sp>.3&&sg!==c.ls){c.ls=sg;if(k==='p')snd.step()}
+ c.legL.rotation.z=s*.55*spx+idle*.03-lunge*.25;c.legR.rotation.z=-s*.55*spx-idle*.03+lunge*.25;
+ c.legL.rotation.x=s*.7*spz-lunge*.15;c.legR.rotation.x=-s*.7*spz+lunge*.2;
+ const jump=win?Math.abs(Math.sin(S.t*7))*.3:0;
+ c.top.position.y=.98-.05*(1-sp)-lunge*.1+Math.abs(s)*.05*sp+jump+idle*.008-(lose?.06:0)-.08*ch;
+ c.top.rotation.z=clamp(-vx*.03*ds,-.25,.25)+idle*.012;
+ c.top.rotation.x=-clamp(fwd*.04,-.15,.3)-(swing&&!ov?.25*Math.sin(p*Math.PI):0)+(lose?.3:0);
+ const bh=side[k]<0&&!ov;
+ c.top.rotation.y=swing&&!ov?c.dir*(bh?.6-1.2*p:-.6+1.2*p):(ch>.02?c.dir*-.7*ch:0);
+ let ry=c.dir*-.3,rx=0,ex=0,ax2=Math.sin(c.ph)*.5*sp,az2=0;
+ if(win){rx=2.4;ry=0;ax2=2.6}
+ else if(ov){const u=clamp(1-sw[k]/.3,0,1);rx=u<.65?1.3+1.6*(u/.65):2.9-2.3*((u-.65)/.35);ry=0;
+  ex=u<.65?.9-2.47*(u/.65):-1.57+1.57*((u-.65)/.35);ax2=u<.4?2.8:1.2}
+ else if(srv){rx=1.3;ry=0;ex=.9;ax2=2.8}
+ else if(swing){ry=c.dir*(bh?1.3-2.2*p:-1+2.2*p);rx=p>.65?.5*(p-.65)/.35:0;az2=-c.dir*lunge}
+ else if(ch>.02){ry=c.dir*(-.3-1.2*ch);ex=.7*ch;rx=-.15*ch;az2=-c.dir*.6*ch}
+ const kk=Math.min(1,dt*(swing?60:12));
+ c.piv.rotation.y+=(ry-c.piv.rotation.y)*kk;c.piv.rotation.x+=(rx-c.piv.rotation.x)*kk;c.el.rotation.x+=(ex-c.el.rotation.x)*Math.min(1,dt*(ov?60:10));
+ c.armO.rotation.x+=(ax2-c.armO.rotation.x)*Math.min(1,dt*14);c.armO.rotation.z+=(az2-c.armO.rotation.z)*Math.min(1,dt*14);
+ const yaw=Math.atan2(-(b.p.x-c.position.x),-(b.p.z-c.position.z))-c.rotation.y,w=Math.atan2(Math.sin(yaw),Math.cos(yaw));
+ c.head.rotation.y+=((lose?Math.sin(S.t*5)*.5:clamp(w,-1,1))-c.head.rotation.y)*Math.min(1,dt*10);
+ c.head.rotation.x+=((lose?.4:win?-.25:0)-c.head.rotation.x)*Math.min(1,dt*8);
+}
+
+// ---------- stands + crowd ----------
+const board=(w,x,z,r)=>{const m=new T.Mesh(new T.BoxGeometry(w,.8,.2),mat(0x1c3f7a));m.position.set(x,.4,z);m.rotation.y=r;scene.add(m)};
+board(W*2+14,0,-(L+3.3),0);board(L*2+8,-(W+3.3),0,Math.PI/2);board(L*2+8,W+3.3,0,Math.PI/2);
+const stands=[{x:-(W+4),z:2,r:-Math.PI/2,len:52},{x:W+4,z:2,r:Math.PI/2,len:52},{x:0,z:-(L+5),r:Math.PI,len:46},{x:0,z:L+9,r:0,len:46}];
+const cols=[0xe63946,0xf1faee,0x457b9d,0xffd166,0x06d6a0,0xef476f,0x8d99ae,0xffffff,0x2a9d8f,0xf4a261],skins=[0xf1c8a5,0xd9a77e,0xb07a55,0x8a5a3c];
+const ppl=[];
+stands.forEach(s=>{
+ const g=new T.Group();g.position.set(s.x,0,s.z);g.rotation.y=s.r;scene.add(g);
+ const wall=new T.Mesh(new T.BoxGeometry(s.len,10,.3),mat(0x1d2733));wall.position.set(0,5,10.6);g.add(wall);
+ for(let i=0;i<9;i++){
+  const h=.5+i*.75,d=.5+i*1.1;
+  const st=new T.Mesh(new T.BoxGeometry(s.len,h,1.1),mat(0x8b949e));st.position.set(0,h/2,d);st.receiveShadow=true;g.add(st);
+  for(let u=-s.len/2+.4;u<s.len/2;u+=1.1){if(Math.random()<.15)continue;
+   ppl.push({l:new T.Vector3(u+Rr(-.1,.1),h,d),r:s.r,g,ph:Math.random()*6,c:cols[Rr(0,cols.length)|0],k:skins[Rr(0,4)|0]});}
+ }
+});
+scene.updateMatrixWorld(true);
+const bodies=new T.InstancedMesh(new T.BoxGeometry(.42,.55,.3),new T.MeshLambertMaterial(),ppl.length);
+const heads=new T.InstancedMesh(new T.SphereGeometry(.14,8,6),new T.MeshLambertMaterial(),ppl.length);
+ppl.forEach((p,i)=>{p.w=p.g.localToWorld(p.l.clone());bodies.setColorAt(i,new T.Color(p.c));heads.setColorAt(i,new T.Color(p.k))});
+scene.add(bodies,heads);
+const dm=new T.Object3D();
+function crowdUpd(dt){
+ ct+=dt;cheer=Math.max(0,cheer-dt*.45);
+ ppl.forEach((p,i)=>{
+  const y=p.w.y+Math.max(0,Math.sin(ct*(3+cheer*6)+p.ph))*(.02+cheer*.25);
+  dm.position.set(p.w.x,y+.3,p.w.z);dm.rotation.y=p.r;dm.updateMatrix();bodies.setMatrixAt(i,dm.matrix);
+  dm.position.y=y+.72
